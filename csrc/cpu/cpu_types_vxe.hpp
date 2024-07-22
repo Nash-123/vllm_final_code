@@ -1,8 +1,8 @@
 
-#ifndef CPU_TYPES_VSX_HPP
-#define CPU_TYPES_VSX_HPP
+#ifndef CPU_TYPES_VXE_HPP
+#define CPU_TYPES_VXE_HPP
 
-#include <altivec.h>
+#include <immintrin.h>
 #include <cmath>
 #include <torch/all.h>
 

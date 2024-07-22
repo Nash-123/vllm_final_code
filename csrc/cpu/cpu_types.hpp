@@ -8,8 +8,8 @@
 #elif defined(__POWER9_VECTOR__)
   //ppc implementation
   #include "cpu_types_vsx.hpp"
-#elif defined(__S390__)
-  //ppc implementation
+#elif defined(__s390x__)
+  //s390 implementation
   #include "cpu_types_vxe.hpp"
 #else
   #warning "unsupported vLLM cpu implementation"
