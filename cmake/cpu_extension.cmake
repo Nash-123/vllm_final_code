@@ -78,11 +78,11 @@ elseif (POWER9_FOUND OR POWER10_FOUND)
         "-mvsx"
         "-mcpu=native"
         "-mtune=native")
-elseif (s390_FOUND)
+elseif (S390_FOUND)
     message(STATUS "S390 detected")
     # Check for S390 VXE support
     list(APPEND CXX_COMPILE_FLAGS
-        "-mvxe"
+        "-mvx"
         "-march=native"
         "-mtune=native")
 else()
