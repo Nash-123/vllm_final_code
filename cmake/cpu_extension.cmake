@@ -48,6 +48,7 @@ find_isa(${CPUINFO} "avx2" AVX2_FOUND)
 find_isa(${CPUINFO} "avx512f" AVX512_FOUND)
 find_isa(${CPUINFO} "POWER10" POWER10_FOUND)
 find_isa(${CPUINFO} "POWER9" POWER9_FOUND)
+find_isa(${CPUINFO} "S390" S390_FOUND)
 
 if (AVX512_FOUND AND NOT AVX512_DISABLED)
     list(APPEND CXX_COMPILE_FLAGS
@@ -77,8 +78,15 @@ elseif (POWER9_FOUND OR POWER10_FOUND)
         "-mvsx"
         "-mcpu=native"
         "-mtune=native")
+elseif (s390_FOUND)
+    message(STATUS "S390 detected")
+    # Check for S390 VXE support
+    list(APPEND CXX_COMPILE_FLAGS
+        "-mvxe"
+        "-march=native"
+        "-mtune=native")
 else()
-    message(FATAL_ERROR "vLLM CPU backend requires AVX512 or AVX2 or Power9+ ISA support.")
+    message(FATAL_ERROR "vLLM CPU backend requires AVX512 or AVX2 or S390 or Power9+ ISA support.")
 endif()
 
 message(STATUS "CPU extension compile flags: ${CXX_COMPILE_FLAGS}")
