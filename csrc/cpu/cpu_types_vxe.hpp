@@ -45,11 +45,11 @@ template <typename T> struct Vec {
 };
 
 typedef struct ss16x8x2_t {
-  __vector signed short val[2];
+  vector signed short val[2];
 } ss16x8x2_t;
 
 typedef struct ss16x8x4_t {
-  __vector signed short val[4];
+  vector signed short val[4];
 } ss16x8x4_t;
 
 typedef struct f32x4x2_t {
@@ -69,11 +69,11 @@ struct BF16Vec8 : public Vec<BF16Vec8> {
   __vector signed short reg;
 
   explicit BF16Vec8(const void *ptr)
-      : reg((__vector signed short)vec_xl(0, (__vector signed short *)ptr)) {}
+      : reg((vector signed short)vec_xl(0, (vector signed short *)ptr)) {}
 
   explicit BF16Vec8(const FP32Vec8 &);
 
-  void save(void *ptr) const { *reinterpret_cast<__vector signed short *>(ptr) = reg; }
+  void save(void *ptr) const { *reinterpret_cast<ector signed short *>(ptr) = reg; }
 };
 
 struct BF16Vec16 : public Vec<BF16Vec16> {
@@ -83,8 +83,8 @@ struct BF16Vec16 : public Vec<BF16Vec16> {
 
   explicit BF16Vec16(const void *ptr) {
     // Load 256 bits in two parts
-    reg.val[0] = (__vector signed short)vec_xl(0,  (signed short *)ptr);
-    reg.val[1] = (__vector signed short)vec_xl(16, (signed short *)ptr);
+    reg.val[0] = (vector signed short)vec_xl(0,  (signed short *)ptr);
+    reg.val[1] = (vector signed short)vec_xl(16, (signed short *)ptr);
   }
 
   explicit BF16Vec16(const FP32Vec16 &);
@@ -400,12 +400,12 @@ template <> inline void storeFP32<c10::BFloat16>(float v, c10::BFloat16 *ptr) {
 #define __VEC_CLASS_FP_NAN (1 << 6)
 #endif
 
-const static __vector unsigned char omask = { 0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20, 21, 24, 25, 28, 29 };
+const static vector unsigned char omask = { 0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20, 21, 24, 25, 28, 29 };
 #ifndef _ARCH_PWR10
-const static __vector unsigned int bias = { 0x00007fff, 0x00007fff, 0x00007fff, 0x00007fff };
-const static __vector unsigned int nan  = { 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000 };
-const static __vector unsigned int sh16 = { 16, 16, 16, 16 };
-const static __vector unsigned int one  = { 1, 1, 1, 1 };
+const static vector unsigned int bias = { 0x00007fff, 0x00007fff, 0x00007fff, 0x00007fff };
+const static vector unsigned int nan  = { 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000 };
+const static vector unsigned int sh16 = { 16, 16, 16, 16 };
+const static vector unsigned int one  = { 1, 1, 1, 1 };
 #endif
 
 inline BF16Vec8::BF16Vec8(const FP32Vec8 &v) {
@@ -433,14 +433,14 @@ inline BF16Vec8::BF16Vec8(const FP32Vec8 &v) {
   inp1 = vec_sr(inp1, sh16);
   reg = (__vector signed short)vec_perm(inp0, inp1, omask);
 #elif defined(_ARCH_S390X)
-  __vector unsigned int inp0 = (__vector unsigned int)(v.reg.val[0]);
-  __vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
-  __vector unsigned int lsb0 = vec_sr(inp0, sh16);
-  __vector unsigned int lsb1 = vec_sr(inp1, sh16);
+  vector unsigned int inp0 = (__vector unsigned int)(v.reg.val[0]);
+  vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
+  vector unsigned int lsb0 = vec_sr(inp0, sh16);
+  vector unsigned int lsb1 = vec_sr(inp1, sh16);
   lsb0 = vec_and(lsb0, one);
   lsb1 = vec_and(lsb1, one);
-  __vector unsigned int rnd0 = vec_add(lsb0, bias);
-  __vector unsigned int rnd1 = vec_add(lsb1, bias);
+  vector unsigned int rnd0 = vec_add(lsb0, bias);
+  vector unsigned int rnd1 = vec_add(lsb1, bias);
   inp0 = vec_add(inp0, rnd0);
   inp1 = vec_add(inp1, rnd1);
   __vector __bool int sel0 = vec_test_data_class(v.reg.val[0], __VEC_CLASS_FP_NAN);
@@ -455,7 +455,7 @@ inline BF16Vec8::BF16Vec8(const FP32Vec8 &v) {
 
 inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
 #ifdef _ARCH_PWR10
-  __vector signed short ret[4];
+  vector signed short ret[4];
   ret[0] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[0]);
   ret[1] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[1]);
   ret[2] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[2]);
@@ -498,22 +498,22 @@ inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
   reg.val[0] = (__vector signed short)vec_perm(inp0, inp1, omask);
   reg.val[1] = (__vector signed short)vec_perm(inp2, inp3, omask);
   #elif defined(_ARCH_S390X)
-  __vector unsigned int inp0 = (__vector unsigned int)(v.reg.val[0]);
-  __vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
-  __vector unsigned int inp2 = (__vector unsigned int)(v.reg.val[2]);
-  __vector unsigned int inp3 = (__vector unsigned int)(v.reg.val[3]);
-  __vector unsigned int lsb0 = vec_sr(inp0, sh16);
-  __vector unsigned int lsb1 = vec_sr(inp1, sh16);
-  __vector unsigned int lsb2 = vec_sr(inp2, sh16);
-  __vector unsigned int lsb3 = vec_sr(inp3, sh16);
+  vector unsigned int inp0 = (__vector unsigned int)(v.reg.val[0]);
+  vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
+  vector unsigned int inp2 = (__vector unsigned int)(v.reg.val[2]);
+  vector unsigned int inp3 = (__vector unsigned int)(v.reg.val[3]);
+  vector unsigned int lsb0 = vec_sr(inp0, sh16);
+  vector unsigned int lsb1 = vec_sr(inp1, sh16);
+  vector unsigned int lsb2 = vec_sr(inp2, sh16);
+  vector unsigned int lsb3 = vec_sr(inp3, sh16);
   lsb0 = vec_and(lsb0, one);
   lsb1 = vec_and(lsb1, one);
   lsb2 = vec_and(lsb2, one);
   lsb3 = vec_and(lsb3, one);
-  __vector unsigned int rnd0 = vec_add(lsb0, bias);
-  __vector unsigned int rnd1 = vec_add(lsb1, bias);
-  __vector unsigned int rnd2 = vec_add(lsb2, bias);
-  __vector unsigned int rnd3 = vec_add(lsb3, bias);
+  vector unsigned int rnd0 = vec_add(lsb0, bias);
+  vector unsigned int rnd1 = vec_add(lsb1, bias);
+  vector unsigned int rnd2 = vec_add(lsb2, bias);
+  vector unsigned int rnd3 = vec_add(lsb3, bias);
   inp0 = vec_add(inp0, rnd0);
   inp1 = vec_add(inp1, rnd1);
   inp2 = vec_add(inp2, rnd2);
@@ -530,8 +530,8 @@ inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
   inp1 = vec_sr(inp1, sh16);
   inp2 = vec_sr(inp2, sh16);
   inp3 = vec_sr(inp3, sh16);
-  reg.val[0] = (__vector signed short)vec_perm(inp0, inp1, omask);
-  reg.val[1] = (__vector signed short)vec_perm(inp2, inp3, omask);
+  reg.val[0] = (vector signed short)vec_perm(inp0, inp1, omask);
+  reg.val[1] = (vector signed short)vec_perm(inp2, inp3, omask);
 #endif
 }
 
