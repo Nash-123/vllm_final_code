@@ -83,6 +83,7 @@ elseif (S390_FOUND)
     # Check for S390 VXE support
     list(APPEND CXX_COMPILE_FLAGS
         "-mvx"
+        "-mzvector"
         "-march=native"
         "-mtune=native")
 else()
