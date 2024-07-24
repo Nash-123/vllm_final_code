@@ -69,7 +69,7 @@ struct BF16Vec8 : public Vec<BF16Vec8> {
   __vector signed short reg;
 
   explicit BF16Vec8(const void *ptr)
-      : reg((__vector signed short)*ptr) {}
+      : reg(*(__vector signed short *)ptr) {}
 
   explicit BF16Vec8(const FP32Vec8 &);
 
@@ -231,15 +231,15 @@ struct FP32Vec8 : public Vec<FP32Vec8> {
   }
 
   FP32Vec8 operator*(const FP32Vec8 &b) const {
-    return FP32Vec8({vec_mulh(reg.val[0], b.reg.val[0]), vec_mulh(reg.val[1], b.reg.val[1])});
+    return FP32Vec8({vec_mul(reg.val[0], b.reg.val[0]), vec_mul(reg.val[1], b.reg.val[1])});
   }
 
   FP32Vec8 operator+(const FP32Vec8 &b) const {
-    return FP32Vec8({vec_addc(reg.val[0], b.reg.val[0]), vec_addc(reg.val[1], b.reg.val[1])});
+    return FP32Vec8({vec_add(reg.val[0], b.reg.val[0]), vec_add(reg.val[1], b.reg.val[1])});
   }
 
   FP32Vec8 operator-(const FP32Vec8 &b) const {
-    return FP32Vec8({vec_subc(reg.val[0], b.reg.val[0]), vec_subc(reg.val[1], b.reg.val[1])});
+    return FP32Vec8({vec_sub(reg.val[0], b.reg.val[0]), vec_sub(reg.val[1], b.reg.val[1])});
   }
 
   FP32Vec8 operator/(const FP32Vec8 &b) const {
@@ -316,26 +316,26 @@ struct FP32Vec16 : public Vec<FP32Vec16> {
 
   FP32Vec16 operator*(const FP32Vec16 &b) const {
     return FP32Vec16(f32x4x4_t({
-        vec_mulh(reg.val[0], b.reg.val[0]),
-        vec_mulh(reg.val[1], b.reg.val[1]),
-        vec_mulh(reg.val[2], b.reg.val[2]),
-        vec_mulh(reg.val[3], b.reg.val[3])}));
+        vec_mul(reg.val[0], b.reg.val[0]),
+        vec_mul(reg.val[1], b.reg.val[1]),
+        vec_mul(reg.val[2], b.reg.val[2]),
+        vec_mul(reg.val[3], b.reg.val[3])}));
   }
 
   FP32Vec16 operator+(const FP32Vec16 &b) const {
     return FP32Vec16(f32x4x4_t({
-        vec_addc(reg.val[0], b.reg.val[0]),
-        vec_addc(reg.val[1], b.reg.val[1]),
-        vec_addc(reg.val[2], b.reg.val[2]),
-        vec_addc(reg.val[3], b.reg.val[3])}));
+        vec_add(reg.val[0], b.reg.val[0]),
+        vec_add(reg.val[1], b.reg.val[1]),
+        vec_add(reg.val[2], b.reg.val[2]),
+        vec_add(reg.val[3], b.reg.val[3])}));
   }
 
   FP32Vec16 operator-(const FP32Vec16 &b) const {
     return FP32Vec16(f32x4x4_t({
-        vec_subc(reg.val[0], b.reg.val[0]),
-        vec_subc(reg.val[1], b.reg.val[1]),
-        vec_subc(reg.val[2], b.reg.val[2]),
-        vec_subc(reg.val[3], b.reg.val[3])}));
+        vec_sub(reg.val[0], b.reg.val[0]),
+        vec_sub(reg.val[1], b.reg.val[1]),
+        vec_sub(reg.val[2], b.reg.val[2]),
+        vec_sub(reg.val[3], b.reg.val[3])}));
   }
 
   FP32Vec16 operator/(const FP32Vec16 &b) const {
