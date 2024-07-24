@@ -69,7 +69,7 @@ struct BF16Vec8 : public Vec<BF16Vec8> {
   __vector signed short reg;
 
   explicit BF16Vec8(const void *ptr)
-      : reg(*(__vector signed short *)ptr) {}
+      : reg(*(__vector signed short*)ptr) {}
 
   explicit BF16Vec8(const FP32Vec8 &);
 
