@@ -146,7 +146,7 @@ struct FP32Vec8 : public Vec<FP32Vec8> {
 
   f32x4x2_t reg;
 
-  explicit FP32Vec8() {
+  explicit FP32Vec8(float v) {
     reg.val[0] = vec_splats(v);
     reg.val[1] = vec_splats(v);
   }
