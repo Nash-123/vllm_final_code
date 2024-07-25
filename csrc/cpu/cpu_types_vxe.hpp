@@ -32,14 +32,6 @@ namespace vec_op {
 #define vec_sub(a, b) ((a) - (b)) // Vector Subtract
 #define vec_mul(a, b) ((a) * (b)) // Vector Multiply
 #define vec_div(a, b) ((a) / (b)) // Vector Divide
-#define vec_and(a, b) ((a) & (b)) // Vector AND
-#define vec_or(a, b) ((a) | (b)) // Vector OR
-#define vec_xor(a, b) ((a) ^ (b)) // Vector XOR
-#define vec_sl(a, b) ((a) << (b)) // Vector Shift Left
-#define vec_sra(a, b) ((a) >> (b)) // Vector Shift Right
-#define vec_sr(a, b) ((a) >> (b)) // Vector Shift Right Algebraic
-#define vec_slo(a, b) vec_slb(a, (b) << 64) // Vector Shift Left by Octet
-#define vec_sro(a, b) vec_srb(a, (b) << 64) // Vector Shift Right by Octet
 
 namespace {
 template <typename T, T... indexes, typename F>
