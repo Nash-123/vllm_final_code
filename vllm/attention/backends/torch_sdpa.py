@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 
 import torch
 from torch.nn.functional import scaled_dot_product_attention
+torch.serialization.set_default_load_endianness('native')
 
 from vllm.attention.backends.abstract import (AttentionBackend, AttentionImpl,
                                               AttentionMetadata, AttentionType)
