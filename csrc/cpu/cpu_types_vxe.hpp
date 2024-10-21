@@ -12,6 +12,7 @@ namespace vec_op {
 #define vec_sub(a, b) ((a) - (b))
 #define vec_mul(a, b) ((a) * (b))
 #define vec_div(a, b) ((a) / (b))
+#define vec_sr(a, b) ((a) >> (b)) // Vector Shift Right Algebraic
 
 // FIXME: FP16 is not fully supported in Torch-CPU
 #define VLLM_DISPATCH_CASE_FLOATING_TYPES(...)                                 \
@@ -394,6 +395,13 @@ inline void fma(FP32Vec16 &acc, FP32Vec16 &a, FP32Vec16 &b) {
   acc = acc + a * b;
 }
 
+
+namespace c10 {
+    struct BFloat16 {
+        uint16_t value; // Assume BFloat16 is defined as a struct containing a 16-bit value.
+    };
+}
+
 template <> inline void storeFP32<c10::BFloat16>(float v, c10::BFloat16 *ptr) {
   c10::BFloat16 __attribute__((__may_alias__)) *v_ptr =
       reinterpret_cast<c10::BFloat16 *>(&v);
@@ -404,21 +412,59 @@ template <> inline void storeFP32<c10::BFloat16>(float v, c10::BFloat16 *ptr) {
 #define __VEC_CLASS_FP_NAN (1 << 6)
 #endif
 
-const static __vector unsigned char omask = { 0, 1, 4, 5, 8, 9, 12, 13, 16, 17, 20, 21, 24, 25, 28, 29 };
-#ifndef _ARCH_PWR10
+const static __vector unsigned char omask = {0, 1, 2, 3, 16, 17, 18, 19, 32, 33, 34, 35, 48, 49, 50, 51};
 const static __vector unsigned int bias = { 0x00007fff, 0x00007fff, 0x00007fff, 0x00007fff };
-const static __vector unsigned int nan  = { 0x7fc00000, 0x7fc00000, 0x7fc00000, 0x7fc00000 };
+const static __vector unsigned int nan  = { 0x7f800000, 0x7f800000, 0x7f800000, 0x7f800000 };
 const static __vector unsigned int sh16 = { 16, 16, 16, 16 };
 const static __vector unsigned int one  = { 1, 1, 1, 1 };
-#endif
+
+inline __vector bool int vec_test_data_class(__vector unsigned int a, unsigned int b) {
+    __vector unsigned int r = {0, 0, 0, 0}; // Result vector initialized to all zeros
+
+    // Masks
+    const unsigned int exponent_mask = 0x7F800000; // Exponent mask (for FP32)
+    const unsigned int mantissa_mask = 0x007FFFFF; // Mantissa mask (for FP32)
+
+    // Process each element of the vector manually
+    for (int i = 0; i < 4; i++) {
+        unsigned int value = a[i];
+        unsigned int exponent = (value & exponent_mask);
+        unsigned int mantissa = (value & mantissa_mask);
+
+        // Check for NaN: exponent == exponent_mask and mantissa != 0
+        if ((b & __VEC_CLASS_FP_NAN) && (exponent == exponent_mask && mantissa != 0)) {
+            r[i] = 0xFFFFFFFF; // Set to all ones (true)
+            continue;          // Skip further checks for this element
+        }
+
+        // Check for Infinity: exponent == exponent_mask and mantissa == 0
+        if ((b & __VEC_CLASS_FP_INFINITY) && (exponent == exponent_mask && mantissa == 0)) {
+            r[i] = 0xFFFFFFFF; // Set to all ones (true)
+            continue;          // Skip further checks for this element
+        }
+
+        // Check for Normal numbers: exponent != 0 and exponent != exponent_mask
+        if ((b & FP_NORMAL) && (exponent != 0 && exponent != exponent_mask)) {
+            r[i] = 0xFFFFFFFF; // Set to all ones (true)
+            continue;          // Skip further checks for this element
+        }
+
+        // Check for Subnormal numbers: exponent == 0 and mantissa != 0
+        if ((b & __VEC_CLASS_FP_SUBNORMAL) && (exponent == 0 && mantissa != 0)) {
+            r[i] = 0xFFFFFFFF; // Set to all ones (true)
+            continue;          // Skip further checks for this element
+        }
+
+        // Check for Zero: value == 0
+        if ((b & __VEC_CLASS_FP_ZERO) && value == 0) {
+            r[i] = 0xFFFFFFFF; // Set to all ones (true)
+        }
+    }
+
+    return (__vector bool int)r; // Return the result vector
+}
 
 inline BF16Vec8::BF16Vec8(const FP32Vec8 &v) {
-#ifdef _ARCH_PWR10
-  __vector signed short ret[2];
-  ret[0] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[0]);
-  ret[1] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[1]);
-  reg = vec_perm(ret[0], ret[1], omask);
-#elif defined(_ARCH_PWR9)
   __vector unsigned int inp0 = (__vector unsigned int)(v.reg.val[0]);
   __vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
   __vector unsigned int lsb0 = vec_sr(inp0, sh16);
@@ -429,26 +475,16 @@ inline BF16Vec8::BF16Vec8(const FP32Vec8 &v) {
   __vector unsigned int rnd1 = vec_add(lsb1, bias);
   inp0 = vec_add(inp0, rnd0);
   inp1 = vec_add(inp1, rnd1);
-  __vector __bool int sel0 = vec_test_data_class(v.reg.val[0], __VEC_CLASS_FP_NAN);
-  __vector __bool int sel1 = vec_test_data_class(v.reg.val[1], __VEC_CLASS_FP_NAN);
+  __vector __bool int sel0 = vec_test_data_class(inp0, __VEC_CLASS_FP_NAN);
+  __vector __bool int sel1 = vec_test_data_class(inp1, __VEC_CLASS_FP_NAN);
   inp0 = vec_sel(inp0, nan, sel0);
   inp1 = vec_sel(inp1, nan, sel1);
   inp0 = vec_sr(inp0, sh16);
   inp1 = vec_sr(inp1, sh16);
   reg = (__vector signed short)vec_perm(inp0, inp1, omask);
-#endif
 }
 
 inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
-#ifdef _ARCH_PWR10
-  __vector signed short ret[4];
-  ret[0] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[0]);
-  ret[1] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[1]);
-  ret[2] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[2]);
-  ret[3] = (__vector signed short)__builtin_vsx_xvcvspbf16((__vector unsigned char)v.reg.val[3]);
-  reg.val[0] = vec_perm(ret[0], ret[1], omask);
-  reg.val[1] = vec_perm(ret[2], ret[3], omask);
-#elif defined(_ARCH_PWR9)
   __vector unsigned int inp0 = (__vector unsigned int)(v.reg.val[0]);
   __vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
   __vector unsigned int inp2 = (__vector unsigned int)(v.reg.val[2]);
@@ -469,10 +505,10 @@ inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
   inp1 = vec_add(inp1, rnd1);
   inp2 = vec_add(inp2, rnd2);
   inp3 = vec_add(inp3, rnd3);
-  __vector __bool int sel0 = vec_test_data_class(v.reg.val[0], __VEC_CLASS_FP_NAN);
-  __vector __bool int sel1 = vec_test_data_class(v.reg.val[1], __VEC_CLASS_FP_NAN);
-  __vector __bool int sel2 = vec_test_data_class(v.reg.val[2], __VEC_CLASS_FP_NAN);
-  __vector __bool int sel3 = vec_test_data_class(v.reg.val[3], __VEC_CLASS_FP_NAN);
+  __vector __bool int sel0 = vec_test_data_class(inp0, __VEC_CLASS_FP_NAN);
+  __vector __bool int sel1 = vec_test_data_class(inp1, __VEC_CLASS_FP_NAN);
+  __vector __bool int sel2 = vec_test_data_class(inp2, __VEC_CLASS_FP_NAN);
+  __vector __bool int sel3 = vec_test_data_class(inp3, __VEC_CLASS_FP_NAN);
   inp0 = vec_sel(inp0, nan, sel0);
   inp1 = vec_sel(inp1, nan, sel1);
   inp2 = vec_sel(inp2, nan, sel2);
@@ -483,7 +519,6 @@ inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
   inp3 = vec_sr(inp3, sh16);
   reg.val[0] = (__vector signed short)vec_perm(inp0, inp1, omask);
   reg.val[1] = (__vector signed short)vec_perm(inp2, inp3, omask);
-#endif
 }
 
 inline void prefetch(const void *addr) {
