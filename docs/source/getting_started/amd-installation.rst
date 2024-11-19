@@ -13,8 +13,6 @@ Requirements
 * GPU: MI200s (gfx90a), MI300 (gfx942), Radeon RX 7900 series (gfx1100)
 * ROCm 6.2
 
-Note: PyTorch 2.5+/ROCm6.2 dropped the support for python 3.8.
-
 Installation options:
 
 #. :ref:`Build from source with docker <build_from_source_docker_rocm>`
@@ -28,6 +26,16 @@ Option 1: Build from source with docker (recommended)
 You can build and install vLLM from source.
 
 First, build a docker image from `Dockerfile.rocm <https://github.com/vllm-project/vllm/blob/main/Dockerfile.rocm>`_ and launch a docker container from the image.
+It is important that the user kicks off the docker build using buildkit. Either the user put DOCKER_BUILDKIT=1 as environment variable when calling docker build command, or the user needs to setup buildkit in the docker daemon configuration /etc/docker/daemon.json as follows and restart the daemon:
+
+.. code-block:: console
+    
+    {
+        "features": {
+            "buildkit": true
+        }
+    }
+
 
 `Dockerfile.rocm <https://github.com/vllm-project/vllm/blob/main/Dockerfile.rocm>`_ uses ROCm 6.2 by default, but also supports ROCm 5.7, 6.0 and 6.1 in older vLLM branches.
 It provides flexibility to customize the build of docker image using the following arguments:
@@ -152,7 +160,7 @@ Note to get your gfx architecture, run `rocminfo |grep gfx`.
         $ python3 setup.py develop
 
 
-    This may take 5-10 minutes. Currently, `pip install .`` does not work for ROCm installation
+    This may take 5-10 minutes. Currently, :code:`pip install .` does not work for ROCm installation.
 
 
 .. tip::
