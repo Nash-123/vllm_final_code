@@ -419,35 +419,15 @@ const static __vector unsigned int nan  = { 0x7fc00000, 0x7fc00000, 0x7fc00000, 
 const static __vector unsigned int sh16 = { 16, 16, 16, 16 };
 const static __vector unsigned int one  = { 1, 1, 1, 1 };
 
-inline __vector bool int vec_test_data_class(__vector unsigned int a, unsigned int b) {
-    __vector unsigned int r = {0, 0, 0, 0}; // Result vector initialized to all zeros
-    for (int i = 0; i < 4; i++) {
-      if (a[i] & b) {
-            r[i] = 0xFFFFFFFF; // Set to all ones (true)
-        }
-  }
-    return (__vector bool int)r; // Return the result vector
-}
-
-
 inline BF16Vec8::BF16Vec8(const FP32Vec8 &v) {
   __vector unsigned int inp0 = (__vector unsigned int)(v.reg.val[0]);
   __vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
-  __vector unsigned int lsb0 = vec_sr(inp0, sh16);
-  __vector unsigned int lsb1 = vec_sr(inp1, sh16);
-  lsb0 = vec_and(lsb0, one);
-  lsb1 = vec_and(lsb1, one);
-/*  __vector unsigned int rnd0 = vec_add(lsb0, bias);
-  __vector unsigned int rnd1 = vec_add(lsb1, bias);
-  inp0 = vec_add(inp0, rnd0);
-  inp1 = vec_add(inp1, rnd1);
-  __vector __bool int sel0 = vec_test_data_class(inp0, __VEC_CLASS_FP_NAN);
-  __vector __bool int sel1 = vec_test_data_class(inp1, __VEC_CLASS_FP_NAN);
-  inp0 = vec_sel(inp0, nan, sel0);
-  inp1 = vec_sel(inp1, nan, sel1);
-  inp0 = vec_sr(inp0, sh16);
-  inp1 = vec_sr(inp1, sh16);*/
-  reg = (__vector signed short)vec_perm(lsb0, lsb1, omask);
+  int cc;
+  __vector __bool int sel0 = vec_fp_test_data_class(v.reg.val[0], __VEC_CLASS_FP_NAN, &cc);
+  __vector __bool int sel1 = vec_fp_test_data_class(v.reg.val[1], __VEC_CLASS_FP_NAN, &cc);
+  inp0 = vec_sel(inp0, nan, sel0) >> sh16;
+  inp1 = vec_sel(inp1, nan, sel1) >> sh16;
+  reg = (__vector signed short)vec_perm(inp0, inp1, omask);
 }
 
 inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
@@ -455,36 +435,17 @@ inline BF16Vec16::BF16Vec16(const FP32Vec16 &v) {
   __vector unsigned int inp1 = (__vector unsigned int)(v.reg.val[1]);
   __vector unsigned int inp2 = (__vector unsigned int)(v.reg.val[2]);
   __vector unsigned int inp3 = (__vector unsigned int)(v.reg.val[3]);
-  __vector unsigned int lsb0 = vec_sr(inp0, sh16);
-  __vector unsigned int lsb1 = vec_sr(inp1, sh16);
-  __vector unsigned int lsb2 = vec_sr(inp2, sh16);
-  __vector unsigned int lsb3 = vec_sr(inp3, sh16);
-/*  lsb0 = vec_and(lsb0, one);
-  lsb1 = vec_and(lsb1, one);
-  lsb2 = vec_and(lsb2, one);
-  lsb3 = vec_and(lsb3, one);
-  __vector unsigned int rnd0 = vec_add(lsb0, bias);
-  __vector unsigned int rnd1 = vec_add(lsb1, bias);
-  __vector unsigned int rnd2 = vec_add(lsb2, bias);
-  __vector unsigned int rnd3 = vec_add(lsb3, bias);
-  inp0 = vec_add(inp0, rnd0);
-  inp1 = vec_add(inp1, rnd1);
-  inp2 = vec_add(inp2, rnd2);
-  inp3 = vec_add(inp3, rnd3);
-  __vector __bool int sel0 = vec_test_data_class(inp0, __VEC_CLASS_FP_NAN);
-  __vector __bool int sel1 = vec_test_data_class(inp1, __VEC_CLASS_FP_NAN);
-  __vector __bool int sel2 = vec_test_data_class(inp2, __VEC_CLASS_FP_NAN);
-  __vector __bool int sel3 = vec_test_data_class(inp3, __VEC_CLASS_FP_NAN);
-  inp0 = vec_sel(inp0, nan, sel0);
-  inp1 = vec_sel(inp1, nan, sel1);
-  inp2 = vec_sel(inp2, nan, sel2);
-  inp3 = vec_sel(inp3, nan, sel3);
-  inp0 = vec_sr(inp0, sh16);
-  inp1 = vec_sr(inp1, sh16);
-  inp2 = vec_sr(inp2, sh16);
-  inp3 = vec_sr(inp3, sh16);*/
-  reg.val[0] = (__vector signed short)vec_perm(lsb0, lsb1, omask);
-  reg.val[1] = (__vector signed short)vec_perm(lsb2, lsb3, omask);
+  int cc;
+  __vector __bool int sel0 = vec_fp_test_data_class(v.reg.val[0], __VEC_CLASS_FP_NAN, &cc);
+  __vector __bool int sel1 = vec_fp_test_data_class(v.reg.val[1], __VEC_CLASS_FP_NAN, &cc);
+  __vector __bool int sel2 = vec_fp_test_data_class(v.reg.val[2], __VEC_CLASS_FP_NAN, &cc);
+  __vector __bool int sel3 = vec_fp_test_data_class(v.reg.val[3], __VEC_CLASS_FP_NAN, &cc);
+  inp0 = vec_sel(inp0, nan, sel0) >> sh16;
+  inp1 = vec_sel(inp1, nan, sel1) >> sh16;
+  inp2 = vec_sel(inp2, nan, sel2) >> sh16;
+  inp3 = vec_sel(inp3, nan, sel3) >> sh16;
+  reg.val[0] = (__vector signed short)vec_perm(inp0, inp1, omask);
+  reg.val[1] = (__vector signed short)vec_perm(inp2, inp3, omask);
 }
 
 inline void prefetch(const void *addr) {
