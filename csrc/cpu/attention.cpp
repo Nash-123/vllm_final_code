@@ -22,6 +22,7 @@ struct KernelVecType<float> {
   using v_load_vec_type = vec_op::FP32Vec16;
 };
 
+#ifdef __AVX512HALF__
 template <>
 struct KernelVecType<c10::Half> {
   using q_load_vec_type = vec_op::FP16Vec8;
