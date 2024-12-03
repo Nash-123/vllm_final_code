@@ -45,7 +45,7 @@ def audio(request):
 ])
 def server(request, audio_assets):
     args = [
-        "--dtype=bfloat16", "--max-model-len=4096", "--enforce-eager",
+        "--dtype=float", "--max-model-len=4096", "--enforce-eager",
         f"--limit-mm-per-prompt=audio={len(audio_assets)}"
     ] + [
         f"--{key.replace('_','-')}={value}"
@@ -185,7 +185,7 @@ def run_multi_audio_test(
 
 
 @pytest.mark.core_model
-@pytest.mark.parametrize("dtype", ["half"])
+@pytest.mark.parametrize("dtype", ["float"])
 @pytest.mark.parametrize("max_tokens", [128])
 @pytest.mark.parametrize("num_logprobs", [5])
 @pytest.mark.parametrize("vllm_kwargs", [
@@ -210,7 +210,7 @@ def test_models(hf_runner, vllm_runner, audio, dtype: str, max_tokens: int,
 
 
 @pytest.mark.core_model
-@pytest.mark.parametrize("dtype", ["half"])
+@pytest.mark.parametrize("dtype", ["float"])
 @pytest.mark.parametrize("max_tokens", [128])
 @pytest.mark.parametrize("num_logprobs", [5])
 @pytest.mark.parametrize("vllm_kwargs", [

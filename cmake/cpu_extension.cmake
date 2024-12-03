@@ -20,6 +20,15 @@ if (CMAKE_SYSTEM_PROCESSOR STREQUAL "ppc64le")
     list(APPEND CXX_COMPILE_FLAGS
         "-fopenmp"
         "-DVLLM_CPU_EXTENSION")
+elseif (CMAKE_SYSTEM_PROCESSOR STREQUAL "s390x")
+    message(STATUS "Detected S390 architecture. Adjusting compile flags.")
+    list(APPEND CXX_COMPILE_FLAGS
+        "-fopenmp"
+        "-DVLLM_CPU_EXTENSION"
+        "-mvx"
+        "-mzvector"
+        "-march=native"
+        "-mtune=native")
 else()
     list(APPEND CXX_COMPILE_FLAGS
         "-fopenmp"

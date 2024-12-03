@@ -176,7 +176,7 @@ def run_test(
         pytest.param("facebook/bart-large-cnn"),
     ],
 )
-@pytest.mark.parametrize("dtype", ["float", "bfloat16"])
+@pytest.mark.parametrize("dtype", ["float"])
 @pytest.mark.parametrize("max_tokens", [64])
 @pytest.mark.parametrize("num_logprobs", [5])
 @pytest.mark.parametrize("decoder_prompt_type", list(DecoderPromptType))

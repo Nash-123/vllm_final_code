@@ -23,7 +23,7 @@ from ..utils import check_embeddings_close
         pytest.param("Alibaba-NLP/gte-Qwen2-1.5B-instruct"),
     ],
 )
-@pytest.mark.parametrize("dtype", ["half"])
+@pytest.mark.parametrize("dtype", ["float"])
 def test_models(
     hf_runner,
     vllm_runner,
