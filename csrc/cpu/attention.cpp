@@ -40,6 +40,7 @@ struct KernelVecType<c10::Half> {
   using k_vec_type = vec_op::FP32Vec16;
   using qk_acc_vec_type = vec_op::FP32Vec16;
 };
+#endif // __AVX512HALF__
 
 #ifdef __AVX512BF16__
 template <>

@@ -31,7 +31,7 @@ if current_platform.is_rocm():
 # yapf: disable
 COMMON_BROADCAST_SETTINGS = {
     "test_type": VLMTestType.IMAGE,
-    "dtype": "float32",
+    "dtype": "float",
     "max_tokens": 5,
     "tensor_parallel_size": 2,
     "model_kwargs": {"device_map": "auto"},
@@ -77,8 +77,8 @@ COMMON_BROADCAST_SETTINGS = {
 
 VLM_TEST_SETTINGS = {
     #### Core tests to always run in the CI
-    "llava": VLMTestInfo(
-        models=["llava-hf/llava-1.5-7b-hf"],
+    "facebook": VLMTestInfo(
+        models=["facebook/opt-125m"],
         test_type=(
             VLMTestType.EMBEDDING,
             VLMTestType.IMAGE,
@@ -95,7 +95,6 @@ VLM_TEST_SETTINGS = {
             ),
             limit_mm_per_prompt={"image": 4},
         )],
-        model_kwargs={"torch_dtype": "float32"},
         marks=[pytest.mark.core_model, pytest.mark.cpu_model],
     ),
     "paligemma": VLMTestInfo(
@@ -114,7 +113,7 @@ VLM_TEST_SETTINGS = {
         ),
         vllm_output_post_proc=model_utils.paligemma_vllm_to_hf_output,
         dtype=("float" if current_platform.is_cpu() or current_platform.is_rocm()
-               else ("float")),
+               else ("half", "float")),
         marks=[pytest.mark.core_model],
     ),
     "qwen2_vl": VLMTestInfo(
@@ -454,7 +453,6 @@ def test_single_image_models(tmp_path: PosixPath, model_type: str,
                              vllm_runner: Type[VllmRunner],
                              image_assets: _ImageAssets):
     model_test_info = VLM_TEST_SETTINGS[model_type]
-    model_test_info.model_kwargs["torch_dtype"] = "float32"
     runners.run_single_image_test(
         tmp_path=tmp_path,
         model_test_info=model_test_info,
@@ -540,10 +538,6 @@ def test_custom_inputs_models(
     vllm_runner: Type[VllmRunner],
 ):
     model_test_info = VLM_TEST_SETTINGS[model_type]
-    model = AutoModelForVision2Seq.from_pretrained(
-        model_test_info.models[0], torch_dtype=torch.float32
-    )
-    model.to(torch.float32)
     runners.run_custom_inputs_test(
         model_test_info=model_test_info,
         test_case=test_case,
