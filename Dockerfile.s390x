@@ -75,10 +75,23 @@ RUN --mount=type=cache,target=/root/.cache/pip  \
         -r requirements-cpu.txt \
         xformers uvloop==0.21.0
 
-# Build and install vLLM
+# Build and install vLLM_bkp
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    --mount=type=cache,target=/root/.cache/ccache \
+#    --mount=type=bind,source=.git,target=.git \
+#    VLLM_TARGET_DEVICE=cpu python3 setup.py build_ext --inplace && \
+#    python3 setup.py bdist_wheel && \
+#    pip install dist/*.whl && \
+#    rm -rf dist
+
+# Upgrade setuptools to a compatible version
+RUN python3 -m pip install --upgrade setuptools
+
+# Build and Install vllm
 RUN --mount=type=cache,target=/root/.cache/pip \
     --mount=type=cache,target=/root/.cache/ccache \
     --mount=type=bind,source=.git,target=.git \
+    VLLM_TARGET_DEVICE=cpu python3 setup.py build_ext --inplace && \
     VLLM_TARGET_DEVICE=cpu python3 setup.py bdist_wheel && \
     pip install dist/*.whl && \
     rm -rf dist
