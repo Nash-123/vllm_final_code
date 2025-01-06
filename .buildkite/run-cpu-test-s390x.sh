@@ -36,7 +36,7 @@ function cpu_tests() {
   # online inference
   docker exec cpu-test bash -c "
     set -e
-    python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m & 
+    python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m --dtype float  & 
     timeout 600 bash -c 'until curl localhost:8000/v1/models; do sleep 1; done' || exit 1
     python3 benchmarks/benchmark_serving.py \
       --backend vllm \
