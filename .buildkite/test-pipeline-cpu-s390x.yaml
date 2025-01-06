@@ -1,7 +1,7 @@
 steps:
 
 # Step: Setup Environment
-- label: 🔧 Setup Environment
+- label: Setup Environment
   agents:
     queue: default
   commands:
@@ -11,32 +11,32 @@ steps:
     - pip3 install buildkite-agent
 
 # Step: Documentation Build
-- label: 🖌️ Documentation Build
+- label: Documentation Build
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pip3 install -r requirements-docs.txt
     - SPHINXOPTS="-W" make -C test_docs/docs html
     - grep "sig sig-object py" test_docs/docs/build/html/dev/sampling_params.html
 
 # Step: CPU Tests for s390x
-- label: 🧰 CPU Tests for s390x
+- label: CPU Tests for s390x
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   env:
     VLLM_CPU_KVCACHE_SPACE: 10
     HF_TOKEN: "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" # Replace with your actual token if required
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - bash .buildkite/run-cpu-test-s390x.sh
 
 # Step: Async Engine, Inputs, Utils, Worker Tests
-- label: 🤖 Async Engine, Inputs, Utils, Worker Tests
+- label: Async Engine, Inputs, Utils, Worker Tests
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pytest -v -s tests/mq_llm_engine
     - pytest -v -s tests/async_engine
     - NUM_SCHEDULER_STEPS=4 pytest -v -s tests/async_engine/test_async_llm_engine.py
@@ -46,74 +46,74 @@ steps:
     - pytest -v -s tests/worker
 
 # Step: Basic Correctness Tests
-- label: ✅ Basic Correctness Tests
+- label: Basic Correctness Tests
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pytest -v -s tests/basic_correctness/test_basic_correctness.py
     - pytest -v -s tests/basic_correctness/test_cpu_offload.py
     - VLLM_TEST_ENABLE_ARTIFICIAL_PREEMPT=1 pytest -v -s tests/basic_correctness/test_preemption.py
 
 # Step: Quantization Tests
-- label: 🤾 Quantization Tests
+- label: Quantization Tests
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - VLLM_TEST_FORCE_LOAD_FORMAT=auto pytest -v -s tests/quantization
 
 # Step: Encoder Decoder Tests
-- label: 🎹 Encoder Decoder Tests
+- label: Encoder Decoder Tests
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pytest -v -s tests/encoder_decoder
 
 # Step: Prefix Caching Test
-- label: ⚖️ Prefix Caching Test
+- label: ⚖ Prefix Caching Test
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pytest -v -s tests/prefix_caching
 
 # Step: Logits Processor Test
-- label: 🔋 Logits Processor Test
+- label: Logits Processor Test
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pytest -v -s tests/test_logits_processor.py
 
 # Step: Basic Models Tests
-- label: 🔧 Basic Models Tests
+- label: Basic Models Tests
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pip3 install -e ./plugins/vllm_add_dummy_model
     - pytest -v -s tests/models/test_oot_registration.py
     - pytest -v -s tests/models/test_registry.py
     - pytest -v -s tests/models/test_initialization.py
 
 # Step: Language Models Test (Standard)
-- label: 🌐 Language Models Test (Standard)
+- label: Language Models Test (Standard)
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pytest -v -s tests/models/decoder_only/language -m 'core_model or quant_model'
     - pytest -v -s tests/models/embedding/language -m core_model
     - pytest -v -s tests/models/embedding/vision_language -m core_model
 
 # Step: Multi-Modal Models Tests (Standard)
-- label: 🌍 Multi-Modal Models Tests (Standard)
+- label: Multi-Modal Models Tests (Standard)
   agents:
     queue: default
-  working_dir: /root/vllm_latest_changes/vllm
   commands:
+    - cd /root/vllm_latest_changes/vllm
     - pytest -v -s tests/models/decoder_only/audio_language -m 'core_model or quant_model'
     - pytest -v -s --ignore tests/models/decoder_only/vision_language/test_phi3v.py tests/models/decoder_only/vision_language -m 'core_model or quant_model'
     - pytest -v -s tests/models/encoder_decoder/language -m core_model
