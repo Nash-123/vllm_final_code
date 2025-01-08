@@ -40,6 +40,7 @@ docker run -itd \
   --network host \
   -e HF_TOKEN="${HF_TOKEN:-}" \
   --name cpu-test \
+  --replace \
   nishan321/cpu-test:latest
 
 function cpu_tests() {
