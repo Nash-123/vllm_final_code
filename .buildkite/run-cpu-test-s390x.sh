@@ -39,7 +39,7 @@ docker run -itd \
   --privileged=true \
   --network host \
   -e HF_TOKEN="${HF_TOKEN:-}" \
-  --name cpu-test \
+  --name cpu-test1 \
   --replace \
   nishan321/cpu-test:latest
 
@@ -53,7 +53,7 @@ function cpu_tests() {
   fi
 
   # Run basic model tests
-  docker exec cpu-test bash -c "
+  docker exec cpu-test1 bash -c "
     set -e
     echo 'Installing dependencies...'
     pip install pytest pytest-asyncio \
@@ -77,7 +77,7 @@ function cpu_tests() {
   "
 
   # Online inference
-  docker exec cpu-test bash -c "
+  docker exec cpu-test1 bash -c "
     set -e
     echo 'Starting the VLLM API server...'
     python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m --dtype float &
