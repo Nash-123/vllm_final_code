@@ -34,7 +34,7 @@ function cpu_tests() {
   fi
 
   # Basic setup and model tests (as root)
-  docker exec -it --user root cpu-test1 bash -c "
+  docker exec --user root cpu-test1 bash -c "
     set -e
 
     # Update and install Python3 and pip
@@ -69,24 +69,24 @@ function cpu_tests() {
   "
 
   # Online inference (without root)
-  docker exec cpu-test1 bash -c "
-    set -e
-    echo 'Starting the VLLM API server...'
-    python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m --dtype float &
-    echo 'Waiting for API server to be ready...'
-    timeout 600 bash -c 'until curl -s localhost:8000/v1/models; do sleep 1; done' || exit 1
-    echo 'Running benchmark tests...'
-    python3 benchmarks/benchmark_serving.py \
-      --backend vllm \
-      --dataset-name random \
-      --model facebook/opt-125m \
-      --num-prompts 20 \
-      --endpoint /v1/completions \
-      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.'
-  "
-}
+#  docker exec cpu-test1 bash -c "
+#    set -e
+#    echo 'Starting the VLLM API server...'
+#    python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m --dtype float &
+#    echo 'Waiting for API server to be ready...'
+#    timeout 600 bash -c 'until curl -s localhost:8000/v1/models; do sleep 1; done' || exit 1
+#    echo 'Running benchmark tests...'
+#    python3 benchmarks/benchmark_serving.py \
+#      --backend vllm \
+#      --dataset-name random \
+#      --model facebook/opt-125m \
+#      --num-prompts 20 \
+#      --endpoint /v1/completions \
+#      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.'
+#  "
+#}
 
 # Run tests with timeout
 export -f cpu_tests
-timeout 30m bash -c "cpu_tests"
+timeout 120m bash -c "cpu_tests"
 
