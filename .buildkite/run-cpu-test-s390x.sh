@@ -9,25 +9,6 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 # This script runs offline inference inside the container.
 set -ex
 
-# Setup cleanup
-#remove_docker_container() { 
-#    echo "Attempting to stop and remove Docker container..."
-#    if docker ps -q --filter "name=cpu-test" | grep -q .; then
-#        echo "Stopping container cpu-test..."
-#        docker stop cpu-test || {
-#            echo "Failed to stop container cpu-test gracefully. Retrying..."
-#            sleep 5
-#            docker stop cpu-test || echo "Forcefully stopping container cpu-test."
-#        }
-#        echo "Removing container cpu-test..."
-#        docker rm -f cpu-test || echo "Failed to remove container cpu-test."
-#    else
-#        echo "No container named cpu-test found running."
-#    fi
-#}
-#trap remove_docker_container EXIT
-#remove_docker_container
-
 # Pull pre-built image
 docker pull docker.io/nishan321/cpu-test:latest
 
@@ -52,9 +33,20 @@ function cpu_tests() {
     exit 1
   fi
 
-  # Run basic model tests
-  docker exec cpu-test1 bash -c "
+  # Basic setup and model tests (as root)
+  docker exec -it --user root cpu-test1 bash -c "
     set -e
+
+    # Update and install Python3 and pip
+    apt-get update && apt-get install -y python3 python3-pip
+
+    # Set Python3 and pip paths
+    ln -sf /usr/bin/python3 /usr/bin/python
+    ln -sf /usr/bin/pip3 /usr/bin/pip
+
+    # Add pytest to PATH environment variable
+    export PATH=\$PATH:/home/vllm/.local/bin
+
     echo 'Installing dependencies...'
     pip install pytest pytest-asyncio \
       einops librosa peft Pillow sentence-transformers soundfile \
@@ -76,7 +68,7 @@ function cpu_tests() {
     echo 'All tests completed.'
   "
 
-  # Online inference
+  # Online inference (without root)
   docker exec cpu-test1 bash -c "
     set -e
     echo 'Starting the VLLM API server...'
@@ -94,11 +86,7 @@ function cpu_tests() {
   "
 }
 
-
-
-
-
 # Run tests with timeout
 export -f cpu_tests
-timeout 140m bash -c "cpu_tests"
+timeout 30m bash -c "cpu_tests"
 
