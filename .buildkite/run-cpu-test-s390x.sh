@@ -82,9 +82,9 @@ function cpu_tests() {
 #      --model facebook/opt-125m \
 #      --num-prompts 20 \
 #      --endpoint /v1/completions \
-#      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.'
-#  "
-#}
+#      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.' "
+
+}
 
 # Run tests with timeout
 export -f cpu_tests
