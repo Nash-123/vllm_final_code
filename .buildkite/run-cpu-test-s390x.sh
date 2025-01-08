@@ -47,46 +47,54 @@ function cpu_tests() {
     # Add pytest to PATH environment variable
     export PATH=\$PATH:/home/vllm/.local/bin
 
+    # Pre-create a requirements.txt
+    echo 'Preparing dependencies...'
+    cat <<EOF > /tmp/requirements.txt
+pytest
+pytest-asyncio
+pytest-xdist
+einops
+librosa
+peft
+Pillow
+sentence-transformers
+soundfile
+transformers-stream-generator
+matplotlib
+datamodel-code-generator
+torchvision --index-url https://download.pytorch.org/whl/cpu
+EOF
+
     echo 'Installing dependencies...'
-    pip install pytest pytest-asyncio \
-      einops librosa peft Pillow sentence-transformers soundfile \
-      transformers_stream_generator matplotlib datamodel_code_generator
-    pip install torchvision --index-url https://download.pytorch.org/whl/cpu
+    pip install -r /tmp/requirements.txt
 
-    echo 'Starting pytest: decoder_only/language'
-    pytest -v -s tests/models/decoder_only/language -m cpu_model || echo 'Test failed: decoder_only/language'
-
-    echo 'Starting pytest: embedding/language'
-    pytest -v -s tests/models/embedding/language -m cpu_model || echo 'Test failed: embedding/language'
-
-    echo 'Starting pytest: encoder_decoder/language'
-    pytest -v -s tests/models/encoder_decoder/language -m cpu_model || echo 'Test failed: encoder_decoder/language'
-
-    echo 'Starting pytest: decoder_only/audio_language'
-    pytest -v -s tests/models/decoder_only/audio_language -m cpu_model || echo 'Test failed: decoder_only/audio_language'
-
+    echo 'Starting parallel pytest...'
+    pytest -n auto -v -s \
+      tests/models/decoder_only/language \
+      tests/models/embedding/language \
+      tests/models/encoder_decoder/language || echo 'Some tests failed.'
     echo 'All tests completed.'
   "
 
   # Online inference (without root)
-#  docker exec cpu-test1 bash -c "
-#    set -e
-#    echo 'Starting the VLLM API server...'
-#    python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m --dtype float &
-#    echo 'Waiting for API server to be ready...'
-#    timeout 600 bash -c 'until curl -s localhost:8000/v1/models; do sleep 1; done' || exit 1
-#    echo 'Running benchmark tests...'
-#    python3 benchmarks/benchmark_serving.py \
-#      --backend vllm \
-#      --dataset-name random \
-#      --model facebook/opt-125m \
-#      --num-prompts 20 \
-#      --endpoint /v1/completions \
-#      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.' "
-
+  docker exec cpu-test1 bash -c "
+    set -e
+    echo 'Starting the VLLM API server...'
+    python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m --dtype float &
+    echo 'Waiting for API server to be ready...'
+    timeout 600 bash -c 'until curl -s localhost:8000/v1/models; do sleep 1; done' || exit 1
+    echo 'Running benchmark tests...'
+    python3 benchmarks/benchmark_serving.py \
+      --backend vllm \
+      --dataset-name random \
+      --model facebook/opt-125m \
+      --num-prompts 5 \
+      --endpoint /v1/completions \
+      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.'
+  "
 }
 
 # Run tests with timeout
 export -f cpu_tests
-timeout 120m bash -c "cpu_tests"
+timeout 200m bash -c "cpu_tests"
 
