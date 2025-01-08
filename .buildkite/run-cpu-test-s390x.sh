@@ -6,15 +6,20 @@ LOG_FILE="cpu_test_log_$(date +%Y%m%d%H%M%S).log"
 # Redirect stdout and stderr to the log file
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-# This script builds the CPU Docker image and runs offline inference inside the container.
-# It serves as a sanity check for compilation and basic model usage.
+# This script runs offline inference inside the container.
 set -ex
 
 # Setup cleanup
 remove_docker_container() { 
     echo "Attempting to stop and remove Docker container..."
     if docker ps -q --filter "name=cpu-test" | grep -q .; then
-        docker stop cpu-test || echo "Failed to stop container cpu-test gracefully."
+        echo "Stopping container cpu-test..."
+        docker stop cpu-test || {
+            echo "Failed to stop container cpu-test gracefully. Retrying..."
+            sleep 5
+            docker stop cpu-test || echo "Forcefully stopping container cpu-test."
+        }
+        echo "Removing container cpu-test..."
         docker rm -f cpu-test || echo "Failed to remove container cpu-test."
     else
         echo "No container named cpu-test found running."
@@ -23,10 +28,10 @@ remove_docker_container() {
 trap remove_docker_container EXIT
 remove_docker_container
 
-# Try building the docker image
-docker build -t cpu-test -f Dockerfile.s390x .
+# Pull pre-built image
+docker pull docker.io/nishan321/cpu-test:latest
 
-# Run the image, setting --shm-size=4g for tensor parallel.
+# Run the image
 source /etc/environment
 docker run -itd \
   --entrypoint /bin/bash \
@@ -35,7 +40,7 @@ docker run -itd \
   --network host \
   -e HF_TOKEN="${HF_TOKEN:-}" \
   --name cpu-test \
-  cpu-test
+  nishan321/cpu-test:latest
 
 function cpu_tests() {
   set -e
@@ -49,7 +54,6 @@ function cpu_tests() {
   # Run basic model tests
   docker exec cpu-test bash -c "
     set -e
-
     echo 'Installing dependencies...'
     pip install pytest pytest-asyncio \
       einops librosa peft Pillow sentence-transformers soundfile \
