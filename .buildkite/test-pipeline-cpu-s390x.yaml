@@ -7,8 +7,6 @@ steps:
   env:
     VLLM_CPU_KVCACHE_SPACE: 10
     HF_TOKEN: "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" # Replace with your actual token if required
-  concurrency: 1
-  concurrency_group: "cpu-tests-s390x"
   commands:
     - cd /root/vllm_latest_changes/vllm
     - bash .buildkite/run-cpu-test-s390x.sh
