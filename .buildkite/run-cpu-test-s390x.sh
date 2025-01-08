@@ -10,23 +10,23 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 set -ex
 
 # Setup cleanup
-remove_docker_container() { 
-    echo "Attempting to stop and remove Docker container..."
-    if docker ps -q --filter "name=cpu-test" | grep -q .; then
-        echo "Stopping container cpu-test..."
-        docker stop cpu-test || {
-            echo "Failed to stop container cpu-test gracefully. Retrying..."
-            sleep 5
-            docker stop cpu-test || echo "Forcefully stopping container cpu-test."
-        }
-        echo "Removing container cpu-test..."
-        docker rm -f cpu-test || echo "Failed to remove container cpu-test."
-    else
-        echo "No container named cpu-test found running."
-    fi
-}
-trap remove_docker_container EXIT
-remove_docker_container
+#remove_docker_container() { 
+#    echo "Attempting to stop and remove Docker container..."
+#    if docker ps -q --filter "name=cpu-test" | grep -q .; then
+#        echo "Stopping container cpu-test..."
+#        docker stop cpu-test || {
+#            echo "Failed to stop container cpu-test gracefully. Retrying..."
+#            sleep 5
+#            docker stop cpu-test || echo "Forcefully stopping container cpu-test."
+#        }
+#        echo "Removing container cpu-test..."
+#        docker rm -f cpu-test || echo "Failed to remove container cpu-test."
+#    else
+#        echo "No container named cpu-test found running."
+#    fi
+#}
+#trap remove_docker_container EXIT
+#remove_docker_container
 
 # Pull pre-built image
 docker pull docker.io/nishan321/cpu-test:latest
