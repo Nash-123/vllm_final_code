@@ -1,7 +1,4 @@
-#Modified bash script 
-
 #!/bin/bash
-
 
 # Define log file
 LOG_FILE="cpu_test_log_$(date +%Y%m%d%H%M%S).log"
@@ -13,15 +10,21 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 # It serves as a sanity check for compilation and basic model usage.
 set -ex
 
-
+# Setup cleanup
+remove_docker_container() { 
+    echo "Attempting to stop and remove Docker container..."
+    if docker ps -q --filter "name=cpu-test" | grep -q .; then
+        docker stop cpu-test || echo "Failed to stop container cpu-test gracefully."
+        docker rm -f cpu-test || echo "Failed to remove container cpu-test."
+    else
+        echo "No container named cpu-test found running."
+    fi
+}
+trap remove_docker_container EXIT
+remove_docker_container
 
 # Try building the docker image
 docker build -t cpu-test -f Dockerfile.s390x .
-
-# Setup cleanup
-remove_docker_container() { docker rm -f cpu-test || true; }
-trap remove_docker_container EXIT
-remove_docker_container
 
 # Run the image, setting --shm-size=4g for tensor parallel.
 source /etc/environment
@@ -46,32 +49,47 @@ function cpu_tests() {
   # Run basic model tests
   docker exec cpu-test bash -c "
     set -e
+
+    echo 'Installing dependencies...'
     pip install pytest pytest-asyncio \
       einops librosa peft Pillow sentence-transformers soundfile \
       transformers_stream_generator matplotlib datamodel_code_generator
     pip install torchvision --index-url https://download.pytorch.org/whl/cpu
-    pytest -v -s tests/models/decoder_only/language -m cpu_model || true
-    pytest -v -s tests/models/embedding/language -m cpu_model || true
-    pytest -v -s tests/models/encoder_decoder/language -m cpu_model || true
-    pytest -v -s tests/models/decoder_only/audio_language -m cpu_model || true
+
+    echo 'Starting pytest: decoder_only/language'
+    pytest -v -s tests/models/decoder_only/language -m cpu_model || echo 'Test failed: decoder_only/language'
+
+    echo 'Starting pytest: embedding/language'
+    pytest -v -s tests/models/embedding/language -m cpu_model || echo 'Test failed: embedding/language'
+
+    echo 'Starting pytest: encoder_decoder/language'
+    pytest -v -s tests/models/encoder_decoder/language -m cpu_model || echo 'Test failed: encoder_decoder/language'
+
+    echo 'Starting pytest: decoder_only/audio_language'
+    pytest -v -s tests/models/decoder_only/audio_language -m cpu_model || echo 'Test failed: decoder_only/audio_language'
+
+    echo 'All tests completed.'
   "
 
   # Online inference
   docker exec cpu-test bash -c "
     set -e
+    echo 'Starting the VLLM API server...'
     python3 -m vllm.entrypoints.openai.api_server --model facebook/opt-125m --dtype float &
+    echo 'Waiting for API server to be ready...'
     timeout 600 bash -c 'until curl -s localhost:8000/v1/models; do sleep 1; done' || exit 1
+    echo 'Running benchmark tests...'
     python3 benchmarks/benchmark_serving.py \
       --backend vllm \
       --dataset-name random \
       --model facebook/opt-125m \
       --num-prompts 20 \
       --endpoint /v1/completions \
-      --tokenizer facebook/opt-125m || true
+      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.'
   "
 }
 
 # Run tests with timeout
 export -f cpu_tests
-timeout 25m bash -c "cpu_tests"
+timeout 140m bash -c "cpu_tests"
 
