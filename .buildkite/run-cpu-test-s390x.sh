@@ -1,3 +1,4 @@
+(torch) [root@t313lp27 .buildkite]# cat run-cpu-test-s390x.sh
 #!/bin/bash
 
 # Define log file
@@ -10,7 +11,7 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 set -ex
 
 # Pull pre-built image
-docker pull nishan321/cpu-test:latest
+docker pull docker.io/nishan321/cpu-test:latest
 
 # Run the image
 source /etc/environment
@@ -21,6 +22,7 @@ docker run -itd \
   --network host \
   -e HF_TOKEN="${HF_TOKEN:-}" \
   --name cpu-test1 \
+  --replace \
   nishan321/cpu-test:latest
 
 function cpu_tests() {
@@ -32,9 +34,20 @@ function cpu_tests() {
     exit 1
   fi
 
-  # Run basic model tests
-  docker exec cpu-test1 bash -c "
+  # Basic setup and model tests (as root)
+  docker exec --user root cpu-test1 bash -c "
     set -e
+
+    # Update and install Python3 and pip
+    apt-get update && apt-get install -y python3 python3-pip
+
+    # Set Python3 and pip paths
+    ln -sf /usr/bin/python3 /usr/bin/python
+    ln -sf /usr/bin/pip3 /usr/bin/pip
+
+    # Add pytest to PATH environment variable
+    export PATH=\$PATH:/home/vllm/.local/bin
+
     echo 'Installing dependencies...'
     pip install pytest pytest-asyncio \
       einops librosa peft Pillow sentence-transformers soundfile \
@@ -47,10 +60,12 @@ function cpu_tests() {
     echo 'Starting pytest: embedding/language'
     pytest -v -s tests/models/embedding/language -m cpu_model || echo 'Test failed: embedding/language'
 
+
+
     echo 'All tests completed.'
   "
 
-  # Online inference
+  # Online inference (without root)
   docker exec cpu-test1 bash -c "
     set -e
     echo 'Starting the VLLM API server...'
@@ -64,11 +79,10 @@ function cpu_tests() {
       --model facebook/opt-125m \
       --num-prompts 5 \
       --endpoint /v1/completions \
-      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.'
-  "
+      --tokenizer facebook/opt-125m || echo 'Benchmark tests failed.' "
+
 }
 
 # Run tests with timeout
 export -f cpu_tests
 timeout 200m bash -c "cpu_tests"
-
