@@ -1,4 +1,3 @@
-(torch) [root@t313lp27 .buildkite]# cat run-cpu-test-s390x.sh
 #!/bin/bash
 
 # Define log file
