@@ -1,3 +1,4 @@
+# Updated Dockerfile for s390x
 FROM ubuntu:22.04
 USER root
 
@@ -8,14 +9,19 @@ RUN apt-get update -y && apt-get install -y \
     cargo libjpeg-dev libpng-dev zlib1g-dev libavcodec-dev libavformat-dev libswscale-dev \
     libtiff-dev libwebp-dev llvm-dev libclang-dev clang libssl-dev g++ \
     python3-distutils python3-setuptools libbz2-dev liblz4-dev libzstd-dev \
-    libsnappy-dev rapidjson-dev libboost-dev liborc-dev pkg-config
+    libsnappy-dev rapidjson-dev libboost-dev liborc-dev pkg-config autoconf libtool \
+    numactl gfortran libopenblas-dev liblapack-dev
+
+
 
 # Upgrade pip
 RUN python3 -m pip install --upgrade pip
 
-# Install Rust and Cargo
+# Install and update Rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y && \
-    . "$HOME/.cargo/env"
+    . "$HOME/.cargo/env" && \
+    rustup default stable && \
+    rustup update
 
 # Build and install Apache Arrow from source
 WORKDIR /tmp/arrow
@@ -46,13 +52,15 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 WORKDIR /workspace
 RUN git clone https://github.com/pytorch/pytorch.git && \
     cd pytorch && \
-    git checkout d990dad && \  
+    git checkout d990dad && \
+    . "$HOME/.cargo/env" && \
+    rustup override set stable && \
     pip install -r requirements.txt && \
     python3 setup.py bdist_wheel && \
     pip install dist/*.whl && \
     rm -rf dist
 
-# Clone torchvision
+# Clone and build torchvision from source
 RUN git clone https://github.com/pytorch/vision.git && \
     cd vision && \
     git checkout 48b1edf && \
@@ -60,41 +68,44 @@ RUN git clone https://github.com/pytorch/vision.git && \
     pip install dist/*.whl && \
     rm -rf dist
 
+# Install Micromamba for lightweight dependency management
+RUN curl -Ls https://micro.mamba.pm/api/micromamba/linux-s390x/latest | tar -xzv -C /usr/local/bin/ --strip-components=1 bin/micromamba || true && \
+    if [ -f /usr/local/bin/micromamba ]; then \
+        /usr/local/bin/micromamba shell init -s bash -r ~/micromamba && source ~/.bashrc; \
+    else \
+        echo "Micromamba installation failed."; \
+    fi
+
+# Create a non-root user and group
+RUN groupadd -r vllm && \
+    useradd --uid 2000 --gid vllm -m -d /home/vllm vllm
+
 # Copy the vLLM repository
 COPY ./ /workspace/vllm
-
 WORKDIR /workspace/vllm
-ARG GIT_REPO_CHECK=0
-RUN --mount=type=bind,source=.git,target=.git \
-    if [ "$GIT_REPO_CHECK" != 0 ]; then bash tools/check_repo.sh; fi
 
-# Install Python requirements
-RUN --mount=type=cache,target=/root/.cache/pip  \
-    pip install -v \
-        'cmake>=3.26' ninja packaging 'setuptools-scm>=8' wheel jinja2 \
-        -r requirements-cpu.txt \
-        xformers uvloop==0.21.0
+# Install Python dependencies
+RUN pip install -v \
+    'cmake>=3.26' ninja packaging 'setuptools-scm>=8' wheel jinja2 \
+    -r requirements-cpu.txt \
+    xformers uvloop==0.21.0
 
-# Build and install vLLM_bkp
-#RUN --mount=type=cache,target=/root/.cache/pip \
-#    --mount=type=cache,target=/root/.cache/ccache \
-#    --mount=type=bind,source=.git,target=.git \
-#    VLLM_TARGET_DEVICE=cpu python3 setup.py build_ext --inplace && \
-#    python3 setup.py bdist_wheel && \
-#    pip install dist/*.whl && \
-#    rm -rf dist
-
-# Upgrade setuptools to a compatible version
-RUN python3 -m pip install --upgrade setuptools
-
-# Build and Install vllm
-RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=cache,target=/root/.cache/ccache \
-    --mount=type=bind,source=.git,target=.git \
-    VLLM_TARGET_DEVICE=cpu python3 setup.py build_ext --inplace && \
+# Build and Install vLLM
+RUN VLLM_TARGET_DEVICE=cpu python3 setup.py build_ext --inplace && \
     VLLM_TARGET_DEVICE=cpu python3 setup.py bdist_wheel && \
     pip install dist/*.whl && \
     rm -rf dist
+
+# Set environment variables for runtime
+ENV HF_HUB_OFFLINE=0 \
+    PORT=8000 \
+    HOME=/home/vllm \
+    VLLM_USAGE_SOURCE=production-docker-image \
+    VLLM_WORKER_MULTIPROC_METHOD=fork
+
+# Set permissions for non-root user
+RUN chown -R vllm:vllm /workspace/vllm
+USER vllm
 
 # Entry point for the API server
 ENTRYPOINT ["/usr/bin/python3", "-m", "vllm.entrypoints.openai.api_server"]
