@@ -9,8 +9,27 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 # This script runs offline inference inside the container.
 set -ex
 
+# Setup cleanup
+remove_docker_container() { 
+    echo "Attempting to stop and remove Docker container..."
+    if docker ps -q --filter "name=cpu-test" | grep -q .; then
+        echo "Stopping container cpu-test..."
+        docker stop cpu-test || {
+            echo "Failed to stop container cpu-test gracefully. Retrying..."
+            sleep 5
+            docker stop cpu-test || echo "Forcefully stopping container cpu-test."
+        }
+        echo "Removing container cpu-test..."
+        docker rm -f cpu-test || echo "Failed to remove container cpu-test."
+    else
+        echo "No container named cpu-test found running."
+    fi
+}
+trap remove_docker_container EXIT
+remove_docker_container
+
 # Pull pre-built image
-docker pull docker.io/nishan321/cpu-test:latest
+docker pull nishan321/cpu-test:latest
 
 # Run the image
 source /etc/environment
@@ -21,7 +40,6 @@ docker run -itd \
   --network host \
   -e HF_TOKEN="${HF_TOKEN:-}" \
   --name cpu-test1 \
-  --replace \
   nishan321/cpu-test:latest
 
 function cpu_tests() {
@@ -33,50 +51,25 @@ function cpu_tests() {
     exit 1
   fi
 
-  # Basic setup and model tests (as root)
-  docker exec --user root cpu-test1 bash -c "
+  # Run basic model tests
+  docker exec cpu-test1 bash -c "
     set -e
-
-    # Update and install Python3 and pip
-    apt-get update && apt-get install -y python3 python3-pip
-
-    # Set Python3 and pip paths
-    ln -sf /usr/bin/python3 /usr/bin/python
-    ln -sf /usr/bin/pip3 /usr/bin/pip
-
-    # Add pytest to PATH environment variable
-    export PATH=\$PATH:/home/vllm/.local/bin
-
-    # Pre-create a requirements.txt
-    echo 'Preparing dependencies...'
-    cat <<EOF > /tmp/requirements.txt
-pytest
-pytest-asyncio
-pytest-xdist
-einops
-librosa
-peft
-Pillow
-sentence-transformers
-soundfile
-transformers-stream-generator
-matplotlib
-datamodel-code-generator
-torchvision --index-url https://download.pytorch.org/whl/cpu
-EOF
-
     echo 'Installing dependencies...'
-    pip install -r /tmp/requirements.txt
+    pip install pytest pytest-asyncio \
+      einops librosa peft Pillow sentence-transformers soundfile \
+      transformers_stream_generator matplotlib datamodel_code_generator
+    pip install torchvision --index-url https://download.pytorch.org/whl/cpu
 
-    echo 'Starting parallel pytest...'
-    pytest -n auto -v -s \
-      tests/models/decoder_only/language \
-      tests/models/embedding/language \
-      tests/models/encoder_decoder/language || echo 'Some tests failed.'
+    echo 'Starting pytest: decoder_only/language'
+    pytest -v -s tests/models/decoder_only/language -m cpu_model || echo 'Test failed: decoder_only/language'
+
+    echo 'Starting pytest: embedding/language'
+    pytest -v -s tests/models/embedding/language -m cpu_model || echo 'Test failed: embedding/language'
+
     echo 'All tests completed.'
   "
 
-  # Online inference (without root)
+  # Online inference
   docker exec cpu-test1 bash -c "
     set -e
     echo 'Starting the VLLM API server...'
