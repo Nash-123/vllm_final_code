@@ -6,7 +6,7 @@ steps:
     queue: default
   env:
     VLLM_CPU_KVCACHE_SPACE: 10
-    HF_TOKEN: "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" # Replace with your actual token if required
+    HF_TOKEN: "" # Replace with your actual token if required
   commands:
     - cd /root/vllm_latest_changes/vllm
     - bash .buildkite/run-cpu-test-s390x.sh
